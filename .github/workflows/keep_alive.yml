@@ -1,0 +1,19 @@
+name: Keep Streamlit App Alive
+
+on:
+  schedule:
+    # Elke 10 minuten
+    - cron: "*/10 * * * *"
+
+  # Laat je toe om hem ook manueel te starten
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Streamlit app
+        run: |
+          echo "Pinging Streamlit app..."
+          curl -I https://toolslk-nujuxf6gqh9jqe89efkmip.streamlit.app/
