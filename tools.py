@@ -1,29 +1,64 @@
 import streamlit as st
 import importlib
+from boomdiagram import teken_boomdiagram
 
-# Functies voor je tools
-def tool_1():
-    st.title("Tool 1: Boomdiagram")
-    st.write("Dit is de boomdiagram tool!")
-    # Voeg hier je code voor de boomtool in
+import tempfile
+import os
 
-def tool_2():
-    st.title("Tool 2: Ander voorbeeld")
-    st.write("Dit is een ander voorbeeld tool!")
-    # Voeg hier de code voor een ander tool in
+st.set_page_config(layout="wide")
 
-def main():
-    # Sidebar voor toolkeuze
-    st.sidebar.title("Kies een Tool")
-    tool_choice = st.sidebar.radio(
-        "Selecteer een tool",
-        ("Boomdiagram", "Ander voorbeeld")
+st.title("Boomdiagram maker (telproblemen)")
+
+tool = st.sidebar.radio(
+    "Kies een tool:",
+    ["Boomdiagram"]
+)
+
+# ================= BOOMDIAGRAM TOOL =================
+if tool == "Boomdiagram":
+    st.markdown("""
+    **Deze tool maakt een boomdiagram op basis van de keuzes die je opgeeft per stap.**
+    """)
+
+    #st.subheader("Stappen en keuzes")
+
+    st.markdown("""
+    **Geef de keuzes stap per stap**
+    
+    - Scheid de stappen met een `|` (verticale streep)
+    - Scheid keuzes met een `,` (komma)
+    - Voorbeeld: een restaurant met voorgerecht S of L, hoofdgerecht V of K, en nagerecht I of C:
+    `S,L | V,K | I,C`  
+    """)
+
+    stappen_tekst = st.text_area(
+        "Invoer",
+        "S,L | V,K | I,C"
     )
 
-    if tool_choice == "Boomdiagram":
-        tool_1()
-    elif tool_choice == "Ander voorbeeld":
-        tool_2()
 
-if __name__ == "__main__":
-    main()
+    if st.button("Genereer boomdiagram"):
+
+        stappen = [
+            [x.strip() for x in deel.split(",")]
+            for deel in stappen_tekst.split("|")
+        ]
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            pad = tmp.name
+
+        plt_obj = teken_boomdiagram(
+            keuzes=stappen,
+            save_path=pad
+        )
+
+        st.image(pad)
+
+        with open(pad, "rb") as f:
+            st.download_button(
+                "Download als afbeelding",
+                f,
+                file_name="boomdiagram.png"
+            )
+
+        os.remove(pad)
