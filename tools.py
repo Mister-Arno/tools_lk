@@ -1,7 +1,7 @@
 import streamlit as st
 import importlib
 from boomdiagram import teken_boom
-from veeltermben2 import derdegraad_benadering, vierdegraad_benadering
+from veeltermen import derdegraad_benadering, vierdegraad_benadering
 import tempfile
 import os
 import urllib.parse
