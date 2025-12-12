@@ -1,8 +1,12 @@
 name: Keep Streamlit Alive via Empty Commit
+
 on:
   schedule:
-    - cron: "0 */2 * * *"   # om de 2 uur, voorbeeld
+    - cron: "0 */2 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   keepalive:
@@ -23,4 +27,4 @@ jobs:
 
       - name: Push
         run: |
-          git push
+          git push origin HEAD
