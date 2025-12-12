@@ -7,7 +7,6 @@ import os
 import urllib.parse
 import streamlit.components.v1 as components
 
-
 st.set_page_config(layout="wide")
 
 st.title("Tools voor leerkrachten")
@@ -277,3 +276,4 @@ if tool == "Functie met gehele extrema generator":
                 alles,
                 file_name="stuksgewijze_functies.txt"
             )
+
