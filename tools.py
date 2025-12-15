@@ -432,114 +432,114 @@ st.markdown("""
     """)
 
 if st.button("Genereer klasplaatsen"):
-        # ----- parsing ---------------------------------------------------
-        boys = [x.strip() for x in jongens_txt.split(",") if x.strip()]
-        girls = [x.strip() for x in meisjes_txt.split(",") if x.strip()]
-        names = boys + girls
+    # ----- parsing ---------------------------------------------------
+    boys = [x.strip() for x in jongens_txt.split(",") if x.strip()]
+    girls = [x.strip() for x in meisjes_txt.split(",") if x.strip()]
+    names = boys + girls
 
-        # duplicates?
-        dupes = [n for n, cnt in Counter(names).items() if cnt > 1]
-        if dupes:
-            st.error(f"Dubbele namen in leerlingenlijst. Zorg dat elke naam uniek is (bv afkorting achternaam toevoegen): {', '.join(dupes)}")
-            st.stop()
-
-
-        # helper om losse lijsten te maken
-        def split_csv(txt):
-            return [x.strip() for x in txt.split(",") if x.strip()]
+    # duplicates?
+    dupes = [n for n, cnt in Counter(names).items() if cnt > 1]
+    if dupes:
+        st.error(f"Dubbele namen in leerlingenlijst. Zorg dat elke naam uniek is (bv afkorting achternaam toevoegen): {', '.join(dupes)}")
+        st.stop()
 
 
-        def split_groups(txt):
-            return [split_csv(line) for line in txt.strip().splitlines() if line.strip()]
+    # helper om losse lijsten te maken
+    def split_csv(txt):
+        return [x.strip() for x in txt.split(",") if x.strip()]
 
 
-        forbidden_groups = split_groups(verboden_txt)
-        solo = split_csv(solo_txt)
-        back = split_csv(back_txt)
-        front = split_csv(front_txt)
+    def split_groups(txt):
+        return [split_csv(line) for line in txt.strip().splitlines() if line.strip()]
 
-        # onbekende namen verzamelen
-        unknown = set()
-        for lst in forbidden_groups + [solo, back, front]:
-            unknown.update([n for n in lst if n not in names])
-        if unknown:
-            st.error(f"Onbekende namen: {', '.join(sorted(unknown))}")
-            st.stop()
 
-        st.info(f"Klas van {len(names)} leerlingen correct ingelezen.\n Er worden {aantal_pogingen} opstellingen gecontroleerd en de "
-                f"beste {n_layouts} worden daarna hieronder getoond.")
+    forbidden_groups = split_groups(verboden_txt)
+    solo = split_csv(solo_txt)
+    back = split_csv(back_txt)
+    front = split_csv(front_txt)
 
-        # ===== generator =====
-        genders = {n: "M" for n in boys}
-        genders.update({n: "V" for n in girls})
+    # onbekende namen verzamelen
+    unknown = set()
+    for lst in forbidden_groups + [solo, back, front]:
+        unknown.update([n for n in lst if n not in names])
+    if unknown:
+        st.error(f"Onbekende namen: {', '.join(sorted(unknown))}")
+        st.stop()
 
-        rng = random.Random(int(seed))
-        gen = SeatingGenerator(
-            names,
-            forbidden_groups,
-            front_pref=front,
-            back_pref=back,
-            solo_pref=solo,
-            genders=genders,
-            avoid_mixed_bank=avoid_mixed,
-            rng=rng,
-            max_attempts=aantal_pogingen   # evt. groter
+    st.info(f"Klas van {len(names)} leerlingen correct ingelezen.\n Er worden {aantal_pogingen} opstellingen gecontroleerd en de "
+            f"beste {n_layouts} worden daarna hieronder getoond.")
+
+    # ===== generator =====
+    genders = {n: "M" for n in boys}
+    genders.update({n: "V" for n in girls})
+
+    rng = random.Random(int(seed))
+    gen = SeatingGenerator(
+        names,
+        forbidden_groups,
+        front_pref=front,
+        back_pref=back,
+        solo_pref=solo,
+        genders=genders,
+        avoid_mixed_bank=avoid_mixed,
+        rng=rng,
+        max_attempts=aantal_pogingen   # evt. groter
+    )
+
+    # voortgangsbalk
+    progress = st.progress(0.0)
+    best = []
+    seats = gen.seats1.copy()
+    for attempt in range(gen.max_attempts):
+        rng.shuffle(seats)
+        assign = {}
+        if gen._place_recursive(0, seats, assign):
+            score, missing = gen._evaluate(assign)
+            best.append((assign.copy(), score, missing))
+            best.sort(key=lambda x: x[1], reverse=True)
+            best = best[: int(n_layouts)]
+            if len(best) >= n_layouts and all(miss == [] for _,_,miss in best):
+                break
+
+        if attempt % (gen.max_attempts // 1000) == 0:
+            progress.progress((attempt + 1) / gen.max_attempts)
+    progress.empty()
+
+    if not best:
+        st.error("Geen enkele geldige opstelling gevonden.")
+        st.stop()
+
+    # ===== helper voor ascii-print =====
+    def layout_to_str(assignment, seats):
+        banks = defaultdict(list)
+        for seat, name in assignment.items():
+            banks[(seat[0], seat[1])].append((seat[2], name))
+        max_row = max(r for r, _, _ in seats)
+        max_col = max(c for _, c, _ in seats)
+
+        rtn = "\n".join(
+            " ".join(
+                f"{'/'.join(n for _, n in sorted(banks.get((r, c), []))):^16}" if banks.get((r, c))
+                else "----".center(16)
+                for c in range(max_col + 1)
+            ) for r in range(max_row + 1)
         )
-
-        # voortgangsbalk
-        progress = st.progress(0.0)
-        best = []
-        seats = gen.seats1.copy()
-        for attempt in range(gen.max_attempts):
-            rng.shuffle(seats)
-            assign = {}
-            if gen._place_recursive(0, seats, assign):
-                score, missing = gen._evaluate(assign)
-                best.append((assign.copy(), score, missing))
-                best.sort(key=lambda x: x[1], reverse=True)
-                best = best[: int(n_layouts)]
-                if len(best) >= n_layouts and all(miss == [] for _,_,miss in best):
-                    break
-
-            if attempt % (gen.max_attempts // 1000) == 0:
-                progress.progress((attempt + 1) / gen.max_attempts)
-        progress.empty()
-
-        if not best:
-            st.error("Geen enkele geldige opstelling gevonden.")
-            st.stop()
-
-        # ===== helper voor ascii-print =====
-        def layout_to_str(assignment, seats):
-            banks = defaultdict(list)
-            for seat, name in assignment.items():
-                banks[(seat[0], seat[1])].append((seat[2], name))
-            max_row = max(r for r, _, _ in seats)
-            max_col = max(c for _, c, _ in seats)
-
-            rtn = "\n".join(
-                " ".join(
-                    f"{'/'.join(n for _, n in sorted(banks.get((r, c), []))):^16}" if banks.get((r, c))
-                    else "----".center(16)
-                    for c in range(max_col + 1)
-                ) for r in range(max_row + 1)
-            )
-            rtn += "\n\n VOORKANT LOKAAL HIER"
-            return rtn
+        rtn += "\n\n VOORKANT LOKAAL HIER"
+        return rtn
 
 
-        # ===== output =====
-        for i, (assign, sc, miss) in enumerate(best, 1):
-            st.markdown(f"### Optie {i} — score {sc}")
-            if miss:
-                st.warning("Niet aan voorwaarden voldaan: "+ ", ".join(miss))
-            else:
-                st.success("Alle voorkeuren voldaan!")
-            st.text("Opstelling 1: lokaal met 4 rijen.")
-            st.code(layout_to_str(assign, gen.seats1))
-            st.text("Opstelling 2: lokaal met 3 rijen. (laatste rij van opstelling 1 werd rechts gezet)")
-            st.code(layout_to_str({map_to_layout2(s): n for s, n in assign.items()}, gen.seats2))
-            st.divider()
+    # ===== output =====
+    for i, (assign, sc, miss) in enumerate(best, 1):
+        st.markdown(f"### Optie {i} — score {sc}")
+        if miss:
+            st.warning("Niet aan voorwaarden voldaan: "+ ", ".join(miss))
+        else:
+            st.success("Alle voorkeuren voldaan!")
+        st.text("Opstelling 1: lokaal met 4 rijen.")
+        st.code(layout_to_str(assign, gen.seats1))
+        st.text("Opstelling 2: lokaal met 3 rijen. (laatste rij van opstelling 1 werd rechts gezet)")
+        st.code(layout_to_str({map_to_layout2(s): n for s, n in assign.items()}, gen.seats2))
+        st.divider()
 
 
 st.markdown("""---""")
