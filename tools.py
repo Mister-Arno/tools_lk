@@ -1,7 +1,5 @@
 import streamlit as st
-
-from Leerkracht.tools_lk.boomdiagram import teken_boom_permutatie
-from boomdiagram import teken_boom
+from boomdiagram import teken_boom, teken_boom_permutatie
 from veeltermen import derdegraad_benadering, vierdegraad_benadering
 import tempfile
 import os
